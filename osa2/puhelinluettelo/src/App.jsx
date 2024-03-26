@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import personService from './services/persons.js'
+import './index.css'
 
 
 const FilterNames = ({filterV, onFC}) => {
@@ -39,9 +40,9 @@ const Numbers = ({filterValue, persons, handleDel}) => {
       <ul>
         {persons.filter(person => person.name.includes(filterValue))
         .map(person =>
-        <div>
-          <li key={person.name}> {person.name} {person.number}</li>
-          <button key={person.id} onClick={handleDel}>delete</button>
+        <div key={person.id}>
+          <li> {person.name} {person.number}</li>
+          <button onClick={() => handleDel(person.name, person.id)}>delete</button>
         </div>
         )}
       </ul>
@@ -49,11 +50,33 @@ const Numbers = ({filterValue, persons, handleDel}) => {
   )
 }
 
+const Notification = ({ message }) => {
+  if (message === null) {
+    return null
+  }
+
+  let error;
+  if (message.startsWith("Deleted")) {
+    error = "error";
+  } else if (message.startsWith("Information")) {
+    error = "error2";
+  }
+
+  return (
+    <div className={error}>
+      {message}
+    </div>
+  )
+}
+
+
 const App = () => {
   const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filterValue, setNewFilter] = useState('')
+  const [notificationMessage, setNotificationMessage] = useState(null)
+
 
   useEffect(() => {
     console.log('effect')
@@ -81,9 +104,22 @@ const App = () => {
     setNewNumber(event.target.value)
   }
 
-  const handleDel = (event, id) => {
-    event.preventDefault()
-    setPersons(persons.filter(n => n.id !== id))
+  const handleDel = (name, id) => {
+    if (window.confirm(`Do you really want to delete ${name}`)) {
+      personService
+        .del(id)
+        .then(() => {
+          setPersons(persons.filter(n => n.id !== id))
+      })
+      .then(error => {
+        setNotificationMessage(
+          `Deleted ${name}`
+        )
+        setTimeout(() => {
+          setNotificationMessage(null)
+        }, 5000)
+      })
+    }
   }
 
   const addPerson = (event) => {
@@ -93,19 +129,54 @@ const App = () => {
       number: newNumber
     }
     if (!persons.map(person => person.name).includes(nameObject.name)) {
-      setPersons(persons.concat(nameObject))
-      personService.create(nameObject)
-      setNewName('')
-      setNewNumber('')
+      personService
+        .create(nameObject)
+          .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+          setNewName('')
+          setNewNumber('')
+      })
+      .then(thing => {
+        setNotificationMessage(
+          `Added ${nameObject.name}`
+        )
+        setTimeout(() => {
+          setNotificationMessage(null)
+        }, 1000)
+      })
       console.log(persons)
     } else {
-      alert(`${nameObject.name} is already added to the phonebook`)
+      const updatedPerson = {
+        name: newName,
+        number: newNumber,
+        id: (persons.find(n => n.name === nameObject.name).id)
+      }
+
+      if (window.confirm(`Do you want to change the number of ${updatedPerson.name}`)) {
+        persons.forEach(n => console.log(n.name))
+        personService
+        .update(updatedPerson.id, updatedPerson)
+          .then(returnedPerson => {
+            console.log(returnedPerson.number)
+          setPersons(persons.map(person => person.id !== returnedPerson.id ? person : returnedPerson))
+          setNewName('')
+          setNewNumber('')
+        }).catch(error => {
+          setNotificationMessage(
+            `Information of ${nameObject.name} has already been removed from the server`
+          )
+          setTimeout(() => {
+            setNotificationMessage(null)
+          }, 3000)
+        })
+      }
     }
   }
-
+  
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={notificationMessage} />
       <FilterNames filterV={filterValue} onFC={handleFilterChange}/>
       <Forms newName={newName} newNumber={newNumber} handleNameChange={handleNameChange} handleNumberChange={handleNumberChange} addPerson={addPerson}/>
       <Numbers persons={persons} filterValue={filterValue} handleDel={handleDel}/>
