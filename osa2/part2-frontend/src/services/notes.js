@@ -1,5 +1,5 @@
 import axios from 'axios'
-const baseUrl = 'http://localhost:3001/api/persons'
+const baseUrl = 'http://localhost:3001/notes'
 
 const getAll = () => {
   const request = axios.get(baseUrl)
@@ -16,14 +16,6 @@ const update = (id, newObject) => {
   return request.then(response => response.data)
 }
 
-const del = (id) => {
-    const request = axios.delete(`${baseUrl}/${id}`)
-    return request.then(response => response.data)
-    .catch(error => {
-      // Handle error, for example, log it or show a notification
-      console.error('Error deleting the person:', error);
-  })
-  }
-
-
-export default { getAll, create, update, del }
+export default { 
+  getAll, create, update 
+}
